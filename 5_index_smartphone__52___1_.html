@@ -1,0 +1,875 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>投票 - レイアウト完全固定＆全画面バランス調整版</title>
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@400;500;700;900&display=swap" rel="stylesheet">
+<style>
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+:root {
+  --bg: #f4f6f9;
+  --card-bg: #ffffff;
+  --text: #2c3e50;
+  --text-light: #64748b;
+  --muted: #cbd5e1;
+  --grid-line: #e2e8f0;
+  --c-a: #E1306C;
+  --c-b: #69C9D0;
+  --c-c: #000000;
+  --c-d: #06C755;
+  --shadow: 0 10px 40px rgba(0,0,0,0.06);
+}
+
+body {
+  font-family: 'Noto Sans JP', sans-serif;
+  background: var(--bg);
+  min-height: 100vh;
+  display: flex; align-items: center; justify-content: center;
+  touch-action: manipulation;
+  -webkit-user-select: none; user-select: none;
+}
+
+.wrap { width: 100vw; max-width: 100vw; aspect-ratio: 16/9; max-height: 100vh; padding: 2vw; }
+.card {
+  background: var(--card-bg); width: 100%; height: 100%;
+  border-radius: 24px; box-shadow: var(--shadow); padding: 3% 4%;
+  display: flex; flex-direction: column; position: relative; overflow: hidden;
+}
+
+.screen {
+  display: none; flex-direction: column; flex: 1; width: 100%; height: 100%;
+  opacity: 0; transition: opacity 0.4s ease;
+}
+.screen.show { display: flex; opacity: 1; }
+
+/* ── 1. 投票画面 ── */
+#s-vote { justify-content: space-between; }
+.q-head { text-align: center; margin-top: 2vh; }
+.q-number { font-size: clamp(14px, 1.8vw, 24px); font-weight: 900; color: var(--muted); letter-spacing: 0.1em; }
+.q-title { font-size: clamp(24px, 3.5vw, 48px); font-weight: 900; color: var(--text); line-height: 1.3; white-space: pre-line; margin-top: 1vh;}
+
+.choices-wrap { display: flex; justify-content: center; align-items: center; flex: 1; }
+
+/* ── 画面下部のカウント ── */
+.bottom-area {
+  display: flex; flex-direction: column; align-items: center; gap: 1.5vh;
+  margin-top: 2vh; position: relative;
+}
+.live-counts-container {
+  display: flex; align-items: center; justify-content: center;
+  width: 100%; padding: 1.5vh 0;
+  border-top: 2px solid var(--grid-line);
+}
+.live-counts { display: flex; gap: 3vw; align-items: center; justify-content: center; }
+
+.live-count-item { display:flex; align-items:stretch; border: 1.5px solid #cdd5e0; border-radius: 10px; overflow: hidden; transition: transform 0.1s; background:#fff; }
+.lc-letter { padding: 0.5vh 1.2vw; font-size: clamp(18px, 2.5vw, 36px); font-weight: 900; display:flex; align-items:center; justify-content:center; }
+.lc-sep { width: 1.5px; background: #cdd5e0; }
+.lc-val { padding: 0.5vh 1.2vw; font-size: clamp(15px, 2vw, 30px); font-weight: 700; color: var(--text); display:flex; align-items:center; gap: 0.2vw; }
+.lc-val small { font-size: 0.6em; color: var(--text-light); }
+
+
+.undo-btn {
+  position: absolute; bottom: 0; left: 0;
+  background: #f1f5f9; color: var(--text); font-weight: 700; font-size: clamp(12px, 1.5vw, 20px);
+  border: none; border-radius: 99px; padding: 1.5vh 2.5vw; cursor: pointer; transition: 0.2s;
+  display: flex; align-items: center; gap: 0.5vw; z-index: 10;
+}
+.undo-btn:active { transform: scale(0.95); background: #e2e8f0; }
+.undo-btn:disabled { opacity: 0; pointer-events: none; } 
+
+.close-btn {
+  position: absolute; bottom: 0; right: 0;
+  background: var(--text); color: #fff; font-weight: 700; font-size: clamp(12px, 1.5vw, 20px);
+  border: none; border-radius: 99px; padding: 1.5vh 2.5vw; cursor: pointer; transition: 0.2s;
+  display: flex; align-items: center; gap: 0.5vw; z-index: 10; box-shadow: 0 4px 10px rgba(0,0,0,0.15);
+}
+.close-btn:active { transform: scale(0.95); }
+.close-btn:disabled { opacity: 0; pointer-events: none; }
+
+
+/* ── q-sub ── */
+.q-sub { font-size: clamp(12px, 1.4vw, 18px); font-weight: 700; color: var(--muted); margin-top: 0.5vh; text-align: center; }
+
+/* ── 投票画面: 画像なし・大きな丸バッジ＋テキスト ── */
+.choices { display: flex; justify-content: center; gap: 4vw; align-items: flex-end; flex: 1; padding: 2vh 0 1vh; }
+.choice {
+  display: flex; flex-direction: column; align-items: center; gap: 2vh;
+  cursor: pointer; background: none; border: none; outline: none;
+  -webkit-tap-highlight-color: transparent; transition: transform 0.15s;
+  width: clamp(100px, 16vw, 200px);
+}
+.choice-circle {
+  width: clamp(70px, 9vw, 130px); height: clamp(70px, 9vw, 130px);
+  border-radius: 50%; display: flex; align-items: center; justify-content: center;
+  color: #fff; font-size: clamp(28px, 4vw, 56px); font-weight: 900;
+  box-shadow: 0 8px 24px rgba(0,0,0,0.22), 0 3px 6px rgba(0,0,0,0.12);
+  transition: transform 0.15s;
+}
+.choice-label { font-size: clamp(20px, 2.8vw, 40px); font-weight: 700; color: var(--text); text-align: center; line-height: 1.3; min-height: 1.3em; display: flex; align-items: center; justify-content: center; white-space: nowrap; }
+.choice:active .choice-circle { transform: scale(0.92); }
+.choice.flash .choice-circle { transform: scale(1.1); filter: brightness(0.85); }
+
+/* ── 結果画面: 問題文ヘッダー ── */
+#s-result { background: #ffffff; border-radius: 24px; }
+.r-question-head { text-align: center; margin-bottom: 0; flex-shrink: 0; }
+.r-q-title { font-size: clamp(20px, 2.8vw, 40px); font-weight: 900; color: var(--text); margin-top: 0.3vh; }
+.r-total-label { position: absolute; bottom: 2vh; right: 2.5vw; font-size: clamp(13px, 1.6vw, 22px); font-weight: 700; color: var(--text-light); z-index: 10; }
+.r-total-label b { color: var(--text); font-size: 1.2em; font-variant-numeric: tabular-nums; }
+
+/* ── 縦棒グラフ ── */
+.vbar-layout {
+  display: flex; gap: 2vw; justify-content: center; align-items: stretch;
+  flex: 1; width: 100%; padding: 1vh 4vw 0; min-height: 0;
+}
+.vbar-col {
+  display: flex; flex-direction: column; align-items: center; gap: 0.8vh;
+  flex: 1; max-width: 20%; min-height: 0;
+}
+/* 棒グラフ本体ラッパー：縦いっぱいに伸ばしてtrackを確実に高さ確保 */
+.vbar-graph-wrap {
+  flex: 1; width: 100%; position: relative; min-height: 80px;
+}
+/* track：ラッパーに対して絶対配置で確実にfull-height */
+.vbar-track {
+  position: absolute; bottom: 0; left: 50%; transform: translateX(-50%);
+  width: 60%; height: 100%;
+  background: var(--grid-line); border-radius: 8px 8px 4px 4px; overflow: hidden;
+}
+.vbar-fill {
+  position: absolute; bottom: 0; left: 0;
+  width: 100%; height: 0%;
+  border-radius: 8px 8px 4px 4px;
+  transition: height 1.8s cubic-bezier(0.16, 1, 0.3, 1);
+}
+/* カップ横一列：棒グラフの上に固定 */
+.vbar-cup {
+  width: clamp(44px, 6vw, 80px); object-fit: contain; flex-shrink: 0;
+  filter: drop-shadow(0 3px 6px rgba(0,0,0,0.15));
+}
+/* %：棒グラフの上端付近に表示 */
+.vbar-pct {
+  font-size: clamp(15px, 2vw, 30px); font-weight: 900; color: var(--text);
+  font-variant-numeric: tabular-nums; white-space: nowrap;
+  transition: color 0.2s;
+}
+.vbar-pct.pop {
+  animation: pctPop 0.4s cubic-bezier(0.2, 0.8, 0.2, 1) forwards;
+}
+@keyframes pctPop {
+  0%   { transform: scale(1);    color: var(--text); }
+  40%  { transform: scale(1.35); color: var(--pop-c, var(--c-a)); }
+  100% { transform: scale(1);    color: var(--pop-c, var(--c-a)); }
+}
+.vbar-circle {
+  width: clamp(40px, 4.8vw, 62px); height: clamp(40px, 4.8vw, 62px);
+  border-radius: 50%; color: #fff; font-weight: 900;
+  font-size: clamp(18px, 2.3vw, 32px);
+  display: flex; align-items: center; justify-content: center; flex-shrink: 0;
+}
+.vbar-label {
+  font-size: clamp(13px, 1.7vw, 24px); font-weight: 700; color: var(--text);
+  text-align: center; line-height: 1.2; flex-shrink: 0;
+}
+
+/* ── 2. 結果画面 (大原則：縦2分割レイアウト) ── */
+.result-layout { 
+  display: flex; gap: 3vw; width: 100%; height: 100%; align-items: stretch; padding: 1vh 0; 
+}
+
+/* 左側：元画像・質問表示エリア（1枚目の幅をしっかり確保） */
+.result-left {
+  flex: 0.9; background: #fafafa; border-radius: 20px; border: 1px solid #f1f5f9;
+  display: flex; flex-direction: column; align-items: center; justify-content: center;
+  padding: 2vw; text-align: center;
+}
+
+/* 右側：結果グラフエリア */
+.result-right {
+  flex: 2.1; display: flex; flex-direction: column; height: 100%; position: relative;
+  /* 上下の余白を均等にして、画面全体にパンパンに広げる */
+  padding: 7vh 0 3vh 0; 
+}
+
+/* グラフ背景の縦目盛り線（右画面全体に広げる） */
+.r-grid-container {
+  position: absolute; top: 6vh; bottom: 3vh; left: 14vw; right: 8vw; 
+  pointer-events: none; z-index: 0;
+}
+.r-grid-line {
+  position: absolute; top: 0; bottom: 0; width: 1px; background-color: var(--grid-line);
+}
+.r-grid-label {
+  position: absolute; top: -4.5vh; transform: translateX(-50%);
+  font-size: clamp(12px, 1.4vw, 18px); font-weight: 700; color: var(--text-light);
+  font-variant-numeric: tabular-nums;
+}
+
+/* グラフ行全体（間隔を広げて縦いっぱいに大きく配置） */
+.r-rows { 
+  display: flex; flex-direction: column; justify-content: space-between; 
+  height: 100%; width: 100%; position: relative; z-index: 1; 
+}
+.r-row { 
+  display: flex; align-items: center; width: 100%;
+  opacity: 0; transform: translateX(15px);
+  animation: slideIn 0.8s cubic-bezier(0.2, 0.8, 0.2, 1) forwards;
+}
+.r-row:nth-child(1) { animation-delay: 0.1s; }
+.r-row:nth-child(2) { animation-delay: 0.2s; }
+.r-row:nth-child(3) { animation-delay: 0.3s; }
+.r-row:nth-child(4) { animation-delay: 0.4s; }
+
+@keyframes slideIn {
+  to { opacity: 1; transform: translateX(0); }
+}
+
+/* 【完全固定】左側：選択肢エリア（幅を完全に固定し、1行で美しく並列に揃える） */
+.r-choice-info {
+  display: flex; align-items: center; justify-content: flex-start; gap: 1vw;
+  width: 14vw; flex-shrink: 0;
+}
+.r-circle {
+  width: clamp(26px, 3.2vw, 45px); height: clamp(26px, 3.2vw, 45px);
+  border-radius: 50%; display: flex; align-items: center; justify-content: center;
+  color: #fff; font-size: clamp(12px, 1.5vw, 20px); font-weight: 900; flex-shrink: 0;
+}
+.r-label-text {
+  font-size: clamp(14px, 1.8vw, 24px); font-weight: 700; color: var(--text);
+  white-space: nowrap; text-align: left;
+}
+
+/* 中央：バーグラフエリア（横幅を最大限大きく） */
+.r-bar-area {
+  flex: 1; display: flex; align-items: center; position: relative;
+  margin-right: 8vw; 
+}
+.r-bar-track {
+  width: 100%; height: clamp(40px, 6vh, 70px); background: transparent;
+  display: flex; align-items: center; position: relative;
+}
+.r-bar { 
+  height: 100%; width: 0%; border-radius: 4px;
+  transition: width 2.5s cubic-bezier(0.16, 1, 0.3, 1);
+  box-shadow: 0 4px 15px rgba(0,0,0,0.06);
+  display: flex; align-items: center; position: relative;
+}
+
+/* 【基本表記】バーの中のパーセンテージ（バーが短くても左端に常時表示されるよう調整） */
+.r-bar-inner-text {
+  color: #ffffff; font-weight: 900; font-size: clamp(14px, 2vw, 28px);
+  white-space: nowrap; position: absolute; left: 1vw; /* 左端に固定して常時表示 */
+  text-shadow: 0 1px 4px rgba(0,0,0,0.2);
+}
+
+/* バーの先っちょに追従する得票数エリア */
+.r-bar-stats-edge {
+  position: absolute; left: 0; 
+  display: flex; align-items: baseline; padding-left: 0.8vw;
+  white-space: nowrap; pointer-events: none;
+}
+.r-count-edge {
+  font-size: clamp(14px, 2vw, 28px); font-weight: 700; color: var(--text);
+  font-variant-numeric: tabular-nums;
+}
+.r-count-edge span { font-size: 0.6em; color: var(--text-light); font-weight: 500; margin-left: 1px; }
+
+/* 1位の棒の真上に出るポップアップ */
+.voice-popup {
+  position: relative; align-self: center;
+  display: flex; flex-direction: column; align-items: center;
+  opacity: 0; pointer-events: none;
+  transform: translateY(-8px);
+  transition: opacity 0.4s, transform 0.4s cubic-bezier(0.2,0.8,0.2,1);
+  z-index: 20;
+}
+.voice-popup.show { opacity: 1; pointer-events: auto; transform: translateY(0); }
+.voice-popup-arrow {
+  display: block; width: 0; height: 0;
+  border-left: 12px solid transparent; border-right: 12px solid transparent;
+  border-bottom: 12px solid #555;
+}
+.voice-popup-btn {
+  background: #555; color: #fff; border: none; border-radius: 24px;
+  padding: 1.4vh 2.2vw; font-size: clamp(14px, 1.8vw, 24px); font-weight: 900;
+  cursor: pointer; box-shadow: 0 4px 16px rgba(0,0,0,0.25); transition: 0.15s;
+  white-space: nowrap;
+}
+.voice-popup-btn:active { transform: scale(0.96); }
+
+/* ── 3. 最多の声画面 ── */
+.voice-layout { display: flex; flex-direction: column; align-items: center; justify-content: space-between; height: 100%; width: 100%; position: relative; padding: 5vh 1vw 6vh;}
+.voice-main { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; width: 100%; min-height: 0; }
+.voice-title { font-size: clamp(24px, 4.2vw, 56px); font-weight: 900; margin-bottom: clamp(22px, 5vh, 60px); color: #231815; letter-spacing: 0.02em; }
+.voice-content { display: flex; align-items: center; justify-content: center; gap: 3vw; width: 100%; }
+.silhouette { width: clamp(110px, 14vw, 220px); line-height: 0; flex-shrink: 0; }
+.silhouette svg { width: 100%; height: auto; display: block; }
+.silhouette circle, .silhouette path { fill: #666 !important; color: #666 !important; }
+.bubbles { display: grid; grid-template-columns: 1fr 1fr; grid-template-rows: 1fr 1fr; gap: clamp(16px, 1.9vw, 32px); flex: 1; max-width: 66%; height: clamp(170px, 33vh, 360px); }
+.bubble { background: var(--bubble-c, #1edc50); padding: clamp(12px,1.4vw,26px) clamp(16px,1.9vw,34px); border-radius: clamp(16px,2vw,30px); font-weight: 700; font-size: clamp(13px, 1.65vw, 23px); border: none; position: relative; color: #ffffff; line-height: 1.45; display: flex; align-items: center;}
+.bubble::before { content: ''; position: absolute; top: 50%; left: -13px; transform: translateY(-50%); border-width: 13px 14px 13px 0; border-style: solid; border-color: transparent var(--bubble-c, #1edc50) transparent transparent; }
+
+
+.reset-btn { position: absolute; top: 2.5vh; right: 2.5vw; background: #fff; border: 2px solid var(--text); color: var(--text); border-radius: 99px; padding: 0.8vh 1.8vw; font-weight: 700; font-size: clamp(12px, 1.4vw, 18px); cursor: pointer; z-index: 20; }
+.voice-reset-wrap { display: flex; flex-direction: column; align-items: center; gap: 1vh; margin-top: 0; opacity: 0; transform: translateY(12px); transition: opacity 0.5s, transform 0.5s cubic-bezier(0.2,0.8,0.2,1); }
+.voice-reset-wrap.show { opacity: 1; transform: translateY(0); }
+.voice-reset-btn {
+  margin-top: 0; padding: clamp(7px,1vh,12px) clamp(18px,2.6vw,40px);
+  background: #fff; color: #231815;
+  border: 2px solid #231815; border-radius: 99px;
+  font-size: clamp(12px, 1.5vw, 20px); font-weight: 900;
+  cursor: pointer; box-shadow: none;
+  opacity: 1; transform: none; flex-shrink: 0;
+}
+.voice-reset-btn.show { opacity: 1; transform: translateY(0); }
+.voice-reset-btn:active { transform: scale(0.97); }
+
+/* 自動遷移プログレスバー */
+.timeout-bar-wrap {
+  position: absolute; top: 0; left: 0; width: 100%; height: 3px; background: transparent; z-index: 50;
+}
+.timeout-bar {
+  height: 100%; width: 0%; background: var(--text-light); transition: width linear; opacity: 0.3;
+}
+
+/* ミニサイズ用ヘルパー（左の2分割エリア用） */
+.mini-choices { display: flex; gap: 2vw; margin-top: 3vh; transform: scale(0.85); transform-origin: top center;}
+.mini-choice { display: flex; flex-direction: column; align-items: center; gap: 1vh; }
+.mini-choice .choice-label { font-size: clamp(14px, 1.8vw, 24px); color: var(--text); }
+
+.r-total-absolute { position: absolute; bottom: 2vh; right: 3vw; font-size: clamp(11px, 1.4vw, 18px); font-weight: 700; color: var(--text-light); z-index: 5; }
+.r-total-absolute b { color: var(--text); font-size: 1.2em; font-variant-numeric: tabular-nums; }
+/* __ADMIN_BACKUP_CSS__ */
+.q-head, .r-head { -webkit-touch-callout:none; -webkit-user-select:none; user-select:none; }
+.admin-toast{position:fixed;left:50%;bottom:5vh;transform:translateX(-50%) translateY(10px);background:#2c3e50;color:#fff;padding:12px 24px;border-radius:99px;font-weight:700;font-size:clamp(13px,1.6vw,20px);opacity:0;pointer-events:none;transition:opacity .3s,transform .3s;z-index:9999;box-shadow:0 8px 24px rgba(0,0,0,.25);}
+.admin-toast.show{opacity:1;transform:translateX(-50%) translateY(0);}
+.admin-panel{position:fixed;inset:0;background:rgba(0,0,0,.45);display:flex;align-items:center;justify-content:center;opacity:0;pointer-events:none;transition:opacity .25s;z-index:10000;}
+.admin-panel.show{opacity:1;pointer-events:auto;}
+.admin-box{background:#fff;border-radius:18px;padding:24px;width:min(86vw,420px);box-shadow:0 20px 60px rgba(0,0,0,.35);display:flex;flex-direction:column;gap:12px;}
+.admin-title{font-weight:900;font-size:clamp(16px,2.2vw,24px);color:#2c3e50;text-align:center;margin:0 0 6px;}
+.admin-btn{border:none;border-radius:12px;padding:14px;cursor:pointer;font-weight:800;font-size:clamp(13px,1.7vw,19px);background:#2980b9;color:#fff;}
+.admin-btn.danger{background:#e74c3c;}
+.admin-btn.ghost{background:#ecf0f1;color:#2c3e50;}
+</style>
+</head>
+<body>
+<div class="wrap"><div class="card">
+
+  <div class="timeout-bar-wrap"><div class="timeout-bar" id="timeout-bar"></div></div>
+
+  <div class="screen show" id="s-vote">
+    <div class="q-head">
+      <p class="q-number" id="q-number" style="display:none"></p>
+      <p class="q-title" id="q-title"></p>
+    <p class="q-sub" style="display:none">画面をタップして選んでね</p>
+    </div>
+    
+    <div class="choices-wrap">
+      <div class="choices" id="choices"></div>
+    </div>
+
+    <div class="bottom-area">
+        <button class="undo-btn" id="undo-btn" onclick="undoVote()" disabled>リセット</button>
+        <div class="live-counts-container">
+            <div class="live-counts" id="live-counts"></div>
+        </div>
+        <button class="close-btn" id="close-btn" onclick="finishVote()" disabled>結果を見る ➡</button>
+    </div>
+  </div>
+
+  <div class="screen" id="s-result">
+    <button class="reset-btn" onclick="SE.vote();resetAll()">最初に戻る</button>
+    <!-- 問題文 -->
+    <div class="r-question-head">
+      <p class="q-number" id="r-number" style="display:none"></p>
+      <p class="r-q-title" id="r-title"></p>
+    </div>
+    
+    <!-- 縦棒グラフ全体 -->
+    <div class="vbar-layout" id="vbar-layout">
+      <!-- JSで4列を生成 -->
+    </div>
+    <div class="r-total-absolute">総投票数 <b id="r-total-num">0</b> 票</div>
+    <div class="voice-popup" id="voice-popup">
+      <div class="voice-popup-arrow"></div>
+      <button class="voice-popup-btn" onclick="SE.vote();showVoice()">1位を選んだ人の声 💬</button>
+    </div>
+  </div>
+
+  <div class="screen" id="s-voice">
+    <div class="voice-layout">
+      <div class="voice-main">
+      <div class="voice-title" id="voice-screen-title">1位を選んだ人の声</div>
+      <div class="voice-content">
+        <div class="silhouette">
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="242 662 468 482">
+            <circle cx="476.54" cy="784.21" r="115.88" fill="#666"/>
+            <path d="M575.83,914.53c-9.84-4.63-21.33-3.94-30.7,1.58-20.12,11.83-43.56,18.61-68.59,18.61s-48.47-6.78-68.59-18.61c-9.38-5.51-20.86-6.21-30.7-1.58-63.7,29.98-111.65,87.91-128.04,157.98-4.47,19.12,7.35,38.3,26.47,42.76,64.51,15.08,131.76,23.05,200.86,23.05s136.35-7.98,200.86-23.05c19.12-4.47,30.95-23.64,26.47-42.76-16.39-70.07-64.34-128-128.04-157.98Z" fill="#666"/>
+          </svg>
+        </div>
+        <div class="bubbles" id="voice-bubbles"></div>
+      </div>
+      </div>
+      <div class="voice-reset-wrap" id="voice-reset-wrap">
+        <button class="voice-reset-btn" id="voice-reset-btn" onclick="SE.vote();resetAll()">
+          次の人のために最初の画面に戻る
+        </button>
+      </div>
+    </div>
+  </div>
+
+</div></div>
+
+<script>
+/* ── SE engine (Web Audio API) ── */
+const SE = (() => {
+  let ctx = null;
+  function ac() {
+    if (!ctx) ctx = new (window.AudioContext || window.webkitAudioContext)();
+    if (ctx.state === 'suspended') ctx.resume();
+    return ctx;
+  }
+  // 投票タップ：木琴っぽい温かいポン音
+  function vote() {
+    try {
+      const c = ac(), t = c.currentTime;
+      const o = c.createOscillator(); o.type = 'sine';
+      o.frequency.setValueAtTime(660, t);
+      o.frequency.exponentialRampToValueAtTime(880, t + 0.16);
+      const f = c.createBiquadFilter(); f.type = 'lowpass'; f.frequency.value = 3000;
+      const g = c.createGain();
+      g.gain.setValueAtTime(0.0001, t);
+      g.gain.linearRampToValueAtTime(0.35, t + 0.004);
+      g.gain.exponentialRampToValueAtTime(0.0001, t + 0.16);
+      o.connect(f); f.connect(g); g.connect(c.destination);
+      o.start(t); o.stop(t + 0.2);
+    } catch(e) {}
+  }
+  // グラフ伸び：高共鳴ノイズスウィープ（ウープ系）
+  function graph() {
+    try {
+      const c = ac(), t = c.currentTime;
+      const o = c.createOscillator(); o.type = 'sine';
+      o.frequency.setValueAtTime(400, t);
+      o.frequency.exponentialRampToValueAtTime(1600, t + 0.8);
+      const g = c.createGain();
+      g.gain.setValueAtTime(0.0001, t);
+      g.gain.linearRampToValueAtTime(0.25, t + 0.01);
+      g.gain.exponentialRampToValueAtTime(0.0001, t + 0.8);
+      o.connect(g); g.connect(c.destination);
+      o.start(t); o.stop(t + 0.85);
+    } catch(e) {}
+  }
+  function bell() {
+    try {
+      const c = ac(), t = c.currentTime;
+      const N = {C5:523.3, E5:659.3, G5:784, C6:1046.5};
+      function _bell(freq, t0, dur, gain) {
+        [1, 2.01, 3.0].forEach((r, i) => {
+          const o = c.createOscillator(); o.type = 'sine'; o.frequency.value = freq * r;
+          const g = c.createGain();
+          g.gain.setValueAtTime(0.0001, t0);
+          g.gain.linearRampToValueAtTime(gain * [1, .5, .25][i], t0 + 0.005);
+          g.gain.exponentialRampToValueAtTime(0.0001, t0 + dur * [1, .7, .45][i]);
+          o.connect(g); g.connect(c.destination);
+          o.start(t0); o.stop(t0 + dur + 0.05);
+        });
+      }
+      [N.C5, N.E5, N.G5, N.C6].forEach((f, i) => _bell(f, t + i * 0.11, 0.3, 0.14));
+    } catch(e) {}
+  }
+  return { vote, graph, bell };
+})();
+
+const MAX_VOTES = 10; 
+const TIMEOUT_SEC = 60;
+const STORAGE_KEY = 'entaku_smartphone_votes';
+
+const QUESTION = { number: 'Q', title: `5分暇になってスマホを見る時\n何する？` };
+
+const CUP_IMGS = ['', '', '', ''];
+const CHOICES = [
+  { letter:'A', label:'インスタ開く',     color:'var(--c-a)', img: '' },
+  { letter:'B', label:'TikTok開く',     color:'var(--c-b)', img: '' },
+  { letter:'C', label:'X開く',         color:'var(--c-c)', img: '' },
+  { letter:'D', label:'LINE開く',      color:'var(--c-d)', img: '' },
+];
+
+const VOICE_DATA = {
+  0: ["「友達や好きな人の近況を手軽に見られるから」", "「短い時間でも写真やストーリーを楽しめるから」", "「眺めているだけで気分転換になるから」", "「流行やおしゃれな情報が集まるから」"],
+  1: ["「短い動画でテンポよく楽しめるから」", "「おすすめが自分好みで飽きないから」", "「考えずにぼーっと見られて気が休まるから」", "「流行やネタをいち早く知れるから」"],
+  2: ["「世の中の話題やニュースを素早く把握できるから」", "「短文だから空き時間にさっと読めるから」", "「いろんな人の意見や反応を見るのが面白いから」", "「リアルタイムの情報が一番集まるから」"],
+  3: ["「未読の連絡を確認しておきたいから」", "「友達や家族とのやり取りが一番大事だから」", "「返信を溜めたくないのでこまめに見るから」", "「すきま時間に連絡を片付けておきたいから」"]
+};
+
+let sessionVotes = CHOICES.map(() => 0);
+let sessionTotal = 0;
+let voteHistory = [];
+
+let globalVotes = [0, 0, 0, 0];
+let globalTotal = 0;
+
+let isClosed = false;
+let timeoutId = null;
+
+const $ = id => document.getElementById(id);
+const scr = id => {
+  document.querySelectorAll('.screen').forEach(s => {
+    s.classList.remove('show');
+    setTimeout(() => { if(!s.classList.contains('show')) s.style.display = 'none'; }, 300);
+  });
+  const target = $(id);
+  target.style.display = 'flex';
+  setTimeout(() => target.classList.add('show'), 50);
+};
+
+function loadGlobalData() {
+  const saved = localStorage.getItem(STORAGE_KEY);
+  if (saved) {
+    try {
+      const parsed = JSON.parse(saved);
+      if (Array.isArray(parsed) && parsed.length === CHOICES.length) {
+        globalVotes = parsed;
+      } else {
+        globalVotes = [0, 0, 0, 0];
+        localStorage.removeItem(STORAGE_KEY);
+      }
+    } catch(e) {
+      globalVotes = [0, 0, 0, 0];
+      localStorage.removeItem(STORAGE_KEY);
+    }
+    globalTotal = globalVotes.reduce((sum, val) => sum + val, 0);
+  } else {
+    globalVotes = [0, 0, 0, 0];
+    globalTotal = 0;
+  }
+}
+
+function animateValue(obj, start, end, duration, formatStr, onComplete) {
+  let startTimestamp = null;
+  const step = (timestamp) => {
+    if (!startTimestamp) startTimestamp = timestamp;
+    const progress = Math.min((timestamp - startTimestamp) / duration, 1);
+    const easeProgress = 1 - Math.pow(1 - progress, 1.5);
+    const currentVal = Math.floor(easeProgress * (end - start) + start);
+    
+    if (formatStr === '%') {
+      obj.innerHTML = `${currentVal}%`;
+    } else {
+      obj.innerHTML = formatStr === '票' ? `${currentVal}<small>票</small>` : `${currentVal.toLocaleString()}<span>票</span>`;
+    }
+    
+    if (progress < 1) {
+      window.requestAnimationFrame(step);
+    } else {
+      if (formatStr === '%') {
+        obj.innerHTML = `${end}%`;
+      } else {
+        obj.innerHTML = formatStr === '票' ? `${end}<small>票</small>` : `${end.toLocaleString()}<span>票</span>`;
+      }
+      if (onComplete) onComplete();
+    }
+  };
+  window.requestAnimationFrame(step);
+}
+
+function animateEdgePosition(obj, startPct, endPct, duration) {
+  let startTimestamp = null;
+  const step = (timestamp) => {
+    if (!startTimestamp) startTimestamp = timestamp;
+    const progress = Math.min((timestamp - startTimestamp) / duration, 1);
+    const easeProgress = 1 - Math.pow(1 - progress, 3);
+    const currentPct = easeProgress * (endPct - startPct) + startPct;
+    
+    obj.style.left = currentPct + '%';
+    
+    if (progress < 1) {
+      window.requestAnimationFrame(step);
+    } else {
+      obj.style.left = endPct + '%';
+    }
+  };
+  window.requestAnimationFrame(step);
+}
+
+function startTimer() {
+  clearTimeout(timeoutId);
+  const bar = $('timeout-bar');
+  bar.style.transition = 'none';
+  bar.style.width = '0%';
+  
+  setTimeout(() => {
+    bar.style.transition = `width ${TIMEOUT_SEC}s linear`;
+    bar.style.width = '100%';
+  }, 50);
+
+  timeoutId = setTimeout(() => { resetAll(); }, TIMEOUT_SEC * 1000);
+}
+
+function stopTimer() {
+  clearTimeout(timeoutId);
+  const bar = $('timeout-bar');
+  bar.style.transition = 'none';
+  bar.style.width = '0%';
+}
+
+function init(){
+  loadGlobalData();
+
+  $('q-number').textContent = QUESTION.number;
+  $('q-title').innerHTML = QUESTION.title.replace('\n', '<br>');
+
+  const box = $('choices');
+  const countsBox = $('live-counts');
+  box.innerHTML = '';
+  countsBox.innerHTML = '';
+
+  CHOICES.forEach((c, i)=>{
+    const btn = document.createElement('button');
+    btn.className = 'choice';
+    btn.id = 'choice-'+i;
+    btn.innerHTML = `
+      <span class="choice-label">${c.label.replace(/\n/g, '<br>')}</span>
+      <span class="choice-circle" style="background:${c.color}">${c.letter}</span>
+    `;
+    btn.addEventListener('click', ()=>castVote(i));
+    box.appendChild(btn);
+
+        countsBox.innerHTML += `<span class="live-count-item" id="lc-${i}"><span class="lc-letter" style="color:${c.color}">${c.letter}</span><span class="lc-sep"></span><span class="lc-val">${sessionVotes[i]}<small>票</small></span></span>`;
+  });
+  updateStatus();
+  stopTimer();
+}
+
+function castVote(i){
+  if(isClosed || sessionTotal >= MAX_VOTES) return;
+  SE.vote();
+
+  sessionVotes[i]++;
+  sessionTotal++;
+  voteHistory.push(i);
+
+  const countEl = $(`lc-${i}`);
+  countEl.querySelector('.lc-val').innerHTML = `${sessionVotes[i]}<small>票</small>`;
+  countEl.style.transform = 'scale(1.3)';
+  setTimeout(() => countEl.style.transform = 'scale(1)', 150);
+
+  const el = $('choice-'+i);
+  el.classList.add('flash');
+  setTimeout(()=>el.classList.remove('flash'), 150);
+
+  updateStatus();
+
+  if(sessionTotal >= MAX_VOTES){
+    finishVote();
+  }
+}
+
+function undoVote(){
+  if(isClosed) return;
+  sessionVotes = CHOICES.map(() => 0);
+  sessionTotal = 0;
+  voteHistory = [];
+  CHOICES.forEach((c, i) => {
+    $(`lc-${i}`).querySelector('.lc-val').innerHTML = `0<small>票</small>`;
+  });
+  updateStatus();
+}
+
+function updateStatus(){
+  $('undo-btn').disabled = voteHistory.length === 0;
+  $('close-btn').disabled = sessionTotal === 0;
+}
+
+function finishVote() {
+  if(sessionTotal > 0) {
+    isClosed = true;
+    $('undo-btn').disabled = true;
+    $('close-btn').disabled = true;
+
+    for(let i=0; i<4; i++) {
+      globalVotes[i] += sessionVotes[i];
+    }
+    globalTotal += sessionTotal;
+
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(globalVotes));
+
+    setTimeout(buildResult, 400);
+  }
+}
+
+function buildResult(){
+  $('r-number').textContent = QUESTION.number;
+  $('r-title').innerHTML = QUESTION.title.replace('\n', '<br>');
+  $('r-total-num').textContent = globalTotal.toLocaleString();
+
+  const layout = $('vbar-layout');
+  layout.innerHTML = '';
+  CHOICES.forEach((c, i) => {
+    layout.innerHTML += `
+      <div class="vbar-col" id="vcol-${i}">
+        <div class="vbar-circle" style="background:${c.color}">${c.letter}</div>
+        <div class="vbar-label">${c.label}</div>
+        <div class="vbar-graph-wrap" id="vwrap-${i}">
+          <div class="vbar-track">
+            <div class="vbar-fill" id="vfill-${i}" style="background:${c.color}"></div>
+          </div>
+        </div>
+        <div class="vbar-pct" id="vpct-${i}">0%</div>
+      </div>`;
+  });
+
+  scr('s-result');
+  startTimer();
+
+  setTimeout(() => {
+    SE.graph();
+    CHOICES.forEach((c, i) => {
+      const pct   = globalTotal > 0 ? Math.round(globalVotes[i] / globalTotal * 100) : 0;
+      const fill  = $('vfill-'+i);
+      const pctEl = $('vpct-'+i);
+      fill.style.height = pct + '%';
+      pctEl.style.setProperty('--pop-c', c.color);
+      animateValue(pctEl, 0, pct, 1600, '%', () => {
+        pctEl.classList.remove('pop');
+        void pctEl.offsetWidth;
+        pctEl.classList.add('pop');
+      });
+    });
+    setTimeout(() => { SE.bell(); }, 1820);
+  }, 150);
+
+  let winnerIndex = globalVotes.indexOf(Math.max(...globalVotes));
+  if (winnerIndex < 0) winnerIndex = 0;
+  const bubblesBox = $('voice-bubbles');
+  bubblesBox.innerHTML = '';
+  bubblesBox.style.setProperty('--bubble-c', (CHOICES[winnerIndex] && CHOICES[winnerIndex].color) ? CHOICES[winnerIndex].color : 'var(--c-a)');
+  (VOICE_DATA[winnerIndex] || VOICE_DATA[0]).slice(0,4).forEach(text => {
+    bubblesBox.innerHTML += `<div class="bubble">${text}</div>`;
+  });
+  const title = $('voice-screen-title');
+  if (title) title.textContent = '1位を選んだ人の声';
+  // 1位のカラムの上にポップアップを配置
+  // fillの先端（カップの上）にポップアップを配置 — アニメ完了後に計算
+  setTimeout(() => {
+    const popup = $('voice-popup');
+    const winnerCol = $('vcol-' + winnerIndex);
+    if (!winnerCol || !popup) { popup && popup.classList.add('show'); return; }
+    // オフセットをリセットして自然位置（中央・最下部）を測る
+    popup.style.left = '0px'; popup.style.top = '0px';
+    const popRect = popup.getBoundingClientRect();
+    const colRect = winnerCol.getBoundingClientRect();
+    // 横：1位カラムの中央に合わせる
+    const dx = (colRect.left + colRect.width / 2) - (popRect.left + popRect.width / 2);
+    // 縦：1位カラム全体の下端（ラベルの下）に出す（％はグラフ上にあるため列の下端を基準にする）
+    const targetTop = colRect.bottom + 6;
+    const dy = targetTop - popRect.top - 8;
+    popup.style.left = dx + 'px';
+    popup.style.top  = dy + 'px';
+    popup.classList.add('show');
+  }, 2500);
+}
+
+let voiceCountdownId = null;
+function showVoice() {
+  const wrap = $('voice-reset-wrap');
+  if (wrap) wrap.classList.remove('show');
+  clearInterval(voiceCountdownId);
+  scr('s-voice');
+  startTimer();
+  setTimeout(() => {
+    if (wrap) wrap.classList.add('show');
+    // カウントダウン
+    voiceCountdownId = setTimeout(() => { resetAll(); }, 10000);
+  }, 1000);
+}
+
+function resetAll() {
+  sessionVotes = CHOICES.map(()=>0);
+  sessionTotal = 0;
+  voteHistory = [];
+  isClosed = false;
+  const _p = $('voice-popup'); if(_p){ _p.classList.remove('show'); }
+  clearInterval(typeof voiceCountdownId !== 'undefined' ? voiceCountdownId : null);
+  const _rw = $('voice-reset-wrap'); if(_rw){ _rw.classList.remove('show'); }
+  stopTimer();
+  init();
+  scr('s-vote');
+}
+
+init();
+
+/* __ADMIN_BACKUP_BLOCK__ */
+(function(){
+  if (typeof STORAGE_KEY === 'undefined') return;
+  var DAILY_KEY = STORAGE_KEY + '_daily';
+  var BK_DATE_KEY = STORAGE_KEY + '_lastbk';
+  function todayStr(){var d=new Date(),z=function(n){return String(n).padStart(2,'0');};
+    return d.getFullYear()+'-'+z(d.getMonth()+1)+'-'+z(d.getDate());}
+  function loadDaily(){try{var o=JSON.parse(localStorage.getItem(DAILY_KEY));return (o&&typeof o==='object')?o:{};}catch(e){return {};}}
+  function recordDaily(votes){if(!votes)return;var d=loadDaily(),k=todayStr(),n=votes.length;
+    if(!Array.isArray(d[k])||d[k].length!==n)d[k]=new Array(n).fill(0);
+    for(var i=0;i<n;i++)d[k][i]+=votes[i];
+    try{localStorage.setItem(DAILY_KEY,JSON.stringify(d));}catch(e){}}
+  function labels(){var arr=(typeof CHOICES!=='undefined')?CHOICES:((typeof SEATS!=='undefined')?SEATS:[]);
+    return arr.map(function(c,i){return (c&&(c.label||c.name))?(c.label||c.name).replace(/\n/g,' '):('選択肢'+(i+1));});}
+  function buildCSV(){var d=loadDaily(),labs=labels();
+    var header=['日付'].concat(labs).concat(['合計']);var rows=[header.join(',')];
+    Object.keys(d).sort().forEach(function(date){var a=d[date];var t=a.reduce(function(x,y){return x+y;},0);
+      rows.push([date].concat(a).concat([t]).join(','));});
+    var gv=(typeof globalVotes!=='undefined')?globalVotes:[];var gt=(typeof globalTotal!=='undefined')?globalTotal:0;
+    rows.push(['累計'].concat(gv).concat([gt]).join(','));
+    return '\uFEFF'+rows.join('\r\n');}
+  function downloadCSV(fn){var blob=new Blob([buildCSV()],{type:'text/csv;charset=utf-8;'});
+    var url=URL.createObjectURL(blob),a=document.createElement('a');
+    a.href=url;a.download=fn;document.body.appendChild(a);a.click();document.body.removeChild(a);
+    setTimeout(function(){URL.revokeObjectURL(url);},1000);}
+  function maybeAutoBackup(){var last=localStorage.getItem(BK_DATE_KEY),t=todayStr();
+    if(last&&last!==t){try{downloadCSV('backup_'+STORAGE_KEY+'_'+t+'.csv');}catch(e){}}
+    try{localStorage.setItem(BK_DATE_KEY,t);}catch(e){}}
+  function showToast(msg){var t=document.getElementById('admin-toast');
+    if(!t){t=document.createElement('div');t.id='admin-toast';t.className='admin-toast';document.body.appendChild(t);}
+    t.textContent=msg;t.classList.add('show');clearTimeout(t._h);t._h=setTimeout(function(){t.classList.remove('show');},2200);}
+  function clearAllData(){try{localStorage.removeItem(STORAGE_KEY);}catch(e){}
+    try{localStorage.removeItem(DAILY_KEY);}catch(e){}
+    if(typeof globalVotes!=='undefined'){for(var i=0;i<globalVotes.length;i++)globalVotes[i]=0;}
+    if(typeof globalTotal!=='undefined'){globalTotal=0;}
+    if(typeof resetAll==='function'){resetAll();}else if(typeof init==='function'){init();}
+    if(typeof scr==='function'){scr('s-vote');}}
+  function adminClear(){if(window.confirm('累計の投票データをすべて削除します。\nこの操作は取り消せません。よろしいですか？')){clearAllData();showToast('投票データを削除しました');}}
+  function openPanel(){var ov=document.getElementById('admin-panel');
+    if(ov){ov.classList.add('show');return;}
+    ov=document.createElement('div');ov.id='admin-panel';ov.className='admin-panel';
+    ov.innerHTML='<div class="admin-box"><p class="admin-title">管理メニュー</p>'+
+      '<button class="admin-btn" data-act="backup">バックアップを保存（CSV）</button>'+
+      '<button class="admin-btn danger" data-act="clear">累計データを全削除</button>'+
+      '<button class="admin-btn ghost" data-act="close">閉じる</button></div>';
+    document.body.appendChild(ov);
+    ov.addEventListener('click',function(e){var act=e.target&&e.target.dataset?e.target.dataset.act:null;
+      if(e.target===ov||act==='close'){ov.classList.remove('show');return;}
+      if(act==='backup'){downloadCSV('backup_'+STORAGE_KEY+'_'+todayStr()+'.csv');showToast('バックアップを保存しました');ov.classList.remove('show');}
+      else if(act==='clear'){ov.classList.remove('show');adminClear();}});
+    requestAnimationFrame(function(){ov.classList.add('show');});}
+  function attachLP(el,ms,cb){if(!el)return;var timer=null;
+    el.addEventListener('pointerdown',function(){timer=setTimeout(cb,ms);});
+    ['pointerup','pointerleave','pointercancel'].forEach(function(ev){el.addEventListener(ev,function(){if(timer){clearTimeout(timer);timer=null;}});});
+    el.addEventListener('contextmenu',function(e){e.preventDefault();});}
+  if(typeof window.finishVote==='function'){
+    var _orig=window.finishVote;
+    window.finishVote=function(){
+      var snap=(typeof sessionVotes!=='undefined'&&sessionVotes)?sessionVotes.slice():null;
+      var before=(typeof globalTotal!=='undefined')?globalTotal:0;
+      var r=_orig.apply(this,arguments);
+      if(snap&&typeof globalTotal!=='undefined'&&globalTotal>before){recordDaily(snap);maybeAutoBackup();}
+      return r;
+    };
+  }
+  try{if(!localStorage.getItem(BK_DATE_KEY))localStorage.setItem(BK_DATE_KEY,todayStr());}catch(e){}
+  attachLP(document.querySelector('.q-head'),5000,openPanel);
+  attachLP(document.querySelector('.r-head'),5000,openPanel);
+  window.__buildCSV=buildCSV;window.__openPanel=openPanel;window.__clearAllData=clearAllData;
+})();
+</script>
+</body>
+</html>
