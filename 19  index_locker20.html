@@ -126,7 +126,7 @@ body {
 /* 結果画面 */
 .result-head { display: flex; align-items: baseline; justify-content: center; gap: 2vw; flex-wrap: wrap; }
 #r-number { font-size: clamp(16px, 2.4vw, 32px); font-weight: 900; color: var(--text); letter-spacing: 0; white-space: pre-line; line-height: 1.25; position: relative; top: -3pt; }
-.result-total { width: 100%; text-align: right; margin-top: 0.6vh; padding-right: 0.4vw; font-size: clamp(13px, 1.6vw, 22px); font-weight: 900; color: var(--text-light); }
+.result-total { position: absolute; top: 4vh; left: 3vw; font-size: clamp(14px, 1.8vw, 24px); font-weight: 900; color: var(--text-light); }
 .result-total b { color: var(--text); font-size: 1.3em; font-variant-numeric: tabular-nums; }
 .reset-btn { position: absolute; top: 2vh; right: 2vw; background: #fff; border: 2px solid var(--text); color: var(--text); border-radius: 99px; padding: 1vh 2.2vw; font-weight: 700; font-size: clamp(12px, 1.5vw, 20px); cursor: pointer; z-index: 20; transform: scale(0.7); transform-origin: top right; transition: transform 0.15s; }
 .reset-btn:active { transform: scale(0.672); }
