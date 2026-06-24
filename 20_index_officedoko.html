@@ -53,6 +53,11 @@ body {
   -webkit-tap-highlight-color: transparent; border-radius: 6px;
   transition: background 0.15s, box-shadow 0.15s; outline: none;
 }
+/* 投票画面では各選択肢の範囲を角丸の赤線で囲む */
+#s-vote .seat-zone {
+  border: 2px solid #e60012;
+  border-radius: 10px;
+}
 .seat-zone:hover { background: rgba(59,130,246,0.05); }
 .seat-zone.selected {
   background: rgba(59,130,246,0.12);
@@ -153,7 +158,7 @@ body {
 .r-total-label { position: absolute; top: 4vh; left: 3vw; font-size: clamp(14px, 1.8vw, 24px); font-weight: 700; color: var(--text-light); z-index: 5; }
 .r-total-label b { color: var(--text); font-size: 1.2em; font-variant-numeric: tabular-nums; }
 .reset-btn {
-  position: absolute; top: 0; right: 0; background: #fff; border: 2px solid var(--text);
+  position: absolute; top: 1.8vh; right: 2vw; background: #fff; border: 2px solid var(--text);
   color: var(--text); border-radius: 99px; padding: 0.8vh 1.8vw; font-weight: 700;
   cursor: pointer; z-index: 20; font-size: clamp(12px, 1.4vw, 18px);
 }
@@ -178,13 +183,25 @@ body {
   border-width: 10px 6px 0 6px; border-style: solid;
   border-color: #fff transparent transparent transparent;
 }
+/* 上に余白が無いときは吹き出しを席の下に出す（矢印は上向き） */
+.rank1-popup.below .rank1-popup-arrow {
+  bottom: auto; top: -10px;
+  border-width: 0 8px 10px 8px;
+  border-color: transparent transparent #FFD700 transparent;
+}
+.rank1-popup.below .rank1-popup-arrow::after {
+  top: 2px; left: -6px;
+  border-width: 0 6px 10px 6px;
+  border-color: transparent transparent #fff transparent;
+}
 
 /* ── 声画面 ── */
 .voice-layout { display: flex; flex-direction: column; align-items: center; justify-content: center; height: 100%; width: 100%; }
 .voice-title { font-size: clamp(16px, 2.6vw, 36px); font-weight: 900; margin-bottom: 3.5vh; color: var(--text); }
 .voice-title b { color: #ec407a; }
 .voice-content { display: flex; align-items: center; justify-content: center; gap: 5vw; width: 100%; }
-.silhouette { font-size: clamp(80px, 13vw, 180px); line-height: 1; }
+.silhouette { flex-shrink: 0; width: clamp(80px, 13vw, 180px); }
+.silhouette svg { width: 100%; height: auto; }
 .bubbles { display: grid; grid-template-columns: 1fr 1fr; gap: 1.5vw; flex: 1; max-width: 60%; }
 .bubble {
   background: #fafafa; padding: 1.2vw; border-radius: 14px; font-weight: 500;
@@ -244,9 +261,7 @@ body {
 
   <div class="screen show" id="s-vote">
     <div class="q-head">
-      <p class="q-number" id="q-number"></p>
       <p class="q-title" id="q-title"></p>
-      <p class="q-sub">画面をタップして選んでね</p>
     </div>
     <div class="img-stage-wrap">
       <div class="img-stage" id="vote-stage"></div>
@@ -261,7 +276,6 @@ body {
   <div class="screen" id="s-result">
     <button class="reset-btn" onclick="SE.vote();resetAll()">最初に戻る</button>
     <div class="r-head">
-      <p class="q-number" id="r-number"></p>
       <p class="r-q-title" id="r-title"></p>
       <p class="r-total-label">総投票数 <b id="r-total-num">0</b> 票</p>
     </div>
@@ -278,7 +292,12 @@ body {
     <div class="voice-layout">
       <div class="voice-title" id="voice-title">1位を選んだ人の声</div>
       <div class="voice-content">
-        <div class="silhouette">👤</div>
+        <div class="silhouette">
+          <svg viewBox="0 0 120 150" xmlns="http://www.w3.org/2000/svg">
+            <ellipse cx="60" cy="40" rx="29" ry="33" fill="#ec407a"/>
+            <path d="M60,78 C36,78 19,92 13,116 C10,128 9,140 9,150 L111,150 C111,140 110,128 107,116 C101,92 84,78 60,78 Z" fill="#ec407a"/>
+          </svg>
+        </div>
         <div class="bubbles" id="voice-bubbles"></div>
       </div>
       <button class="back-btn" onclick="SE.vote();resetAll()">次の人のために最初の画面に戻る ↩</button>
@@ -349,7 +368,7 @@ const SE = (() => {
 })();
 
 const MAX_VOTES = 10;          // 同時に投票できる人数
-const TIMEOUT_SEC = 60;
+const TIMEOUT_SEC = 20;
 const STORAGE_KEY = 'entaku_office9_v1';
 const DAILY_KEY = 'entaku_office9_daily_v1';   // 日付別の集計（バックアップ用）
 const BACKUP_DATE_KEY = 'entaku_office9_lastbk_v1'; // 最後に自動保存した日
@@ -360,31 +379,31 @@ const IMG_SRC = 'data:image/png;base64,/9j/4AAQSkZJRgABAQAAAQABAAD/4gHYSUNDX1BST
 // left/top/width/height はすべて画像に対する%
 const SEATS = [
   { id:0,  num:'1',  label:'ハイカウンター席',
-    left:70, top:17, width:28, height:22, cx:50, cy:50,
+    left:69.51, top:13.40, width:26.87, height:17.15, cx:50, cy:50,
     voices:['スタンディング気分で集中！','見晴らしよくて解放感','長居しすぎず効率的','社長室みたいでテンション上がる'] },
   { id:1,  num:'2',  label:'ソファ席（上）',
-    left:47, top:8,  width:22, height:15, cx:50, cy:50,
+    left:50.90, top:5.29,  width:14.20, height:15.19, cx:50, cy:50,
     voices:['ゆったり座れて最高','カフェみたいでおしゃれ','ノートPCひざに置いてまったり','誰もいないから独り占め！'] },
   { id:2,  num:'3',  label:'ソファ席（下）',
-    left:47, top:24, width:22, height:14, cx:50, cy:50,
+    left:50.85, top:22.95, width:14.31, height:13.48, cx:50, cy:50,
     voices:['ふかふかで最高','気分が上がる空間','集中できるのに疲れない','お気に入りスポット'] },
   { id:3,  num:'4',  label:'個人デスクゾーン',
-    left:1,  top:2,  width:41, height:20, cx:50, cy:50,
+    left:5.77,  top:3.37,  width:33.17, height:15.67, cx:50, cy:50,
     voices:['やっぱり自分のデスクが一番','モニターが使えて便利','いつもの場所が落ち着く','ルーティンを守りたいタイプ'] },
   { id:4,  num:'5',  label:'大会議テーブル',
-    left:8,  top:29, width:36, height:28, cx:50, cy:50,
+    left:15.21, top:28.84, width:21.04, height:16.98, cx:50, cy:50,
     voices:['広い机で作業が捗る','誰もいないから贅沢に使う','会議室気分で気が引き締まる','椅子もいっぱい選び放題'] },
   { id:5,  num:'6',  label:'丸テーブル＋黄色椅子',
-    left:11, top:68, width:24, height:30, cx:50, cy:50,
+    left:16.40, top:65.53, width:15.50, height:20.90, cx:50, cy:50,
     voices:['椅子がかわいくてテンション上がる','ここだけ別世界みたい','リラックスしながら作業','明るい雰囲気で気分が上がる'] },
   { id:6,  num:'7',  label:'グリーン仕切り横',
-    left:35, top:55, width:19, height:32, cx:50, cy:50,
+    left:42.87, top:44.54, width:8.14,  height:31.06, cx:50, cy:50,
     voices:['植物の近くで癒される','自然に囲まれて集中','空気がいい気がする','バイオフィリックデザイン好き'] },
   { id:7,  num:'8',  label:'右デスクエリア（上段）',
-    left:54, top:38, width:44, height:24, cx:50, cy:50,
+    left:57.68, top:38.87, width:36.25, height:20.79, cx:50, cy:50,
     voices:['普段使いで慣れてる','フリーアドレスを活用','静かで集中できる','いつもと違う島で気分転換'] },
   { id:8,  num:'9',  label:'右デスクエリア（下段）',
-    left:54, top:62, width:44, height:25, cx:50, cy:50,
+    left:57.68, top:62.45, width:36.25, height:20.86, cx:50, cy:50,
     voices:['一番奥で誰にも邪魔されない','コーナーが好き','静けさ最高','完全に一人の世界'] },
 ];
 
@@ -589,7 +608,6 @@ function animateValue(el, end, duration, suffix) {
 }
 
 function buildResult() {
-  $('r-number').textContent = QUESTION.number;
   $('r-title').textContent = QUESTION.title;
   $('r-total-num').textContent = globalTotal.toLocaleString();
   $('result-stage').innerHTML = '';
@@ -650,7 +668,17 @@ function buildResult() {
     let left = zL + zW / 2 - pw / 2;
     left = Math.max(4, Math.min(left, cr.width - pw - 4));
     popup.style.left = left + 'px';
-    popup.style.top = (zT - popup.offsetHeight - 14) + 'px';
+    const zH = (seat.height / 100) * sr.height;
+    const stageTop = sr.top - cr.top;
+    let top = zT - popup.offsetHeight - 14;
+    if (top < stageTop + 4) {
+      // 上に余白が無い場合は席の下に表示
+      top = zT + zH + 14;
+      popup.classList.add('below');
+    } else {
+      popup.classList.remove('below');
+    }
+    popup.style.top = top + 'px';
     popup.classList.add('show');
   }, 2600);
 }
@@ -695,7 +723,6 @@ function resetAll() {
 }
 function init() {
   loadGlobalData();
-  $('q-number').textContent = QUESTION.number;
   $('q-title').textContent = QUESTION.title;
   $('vote-stage').innerHTML = '';
   buildStage($('vote-stage'), 'vote');
