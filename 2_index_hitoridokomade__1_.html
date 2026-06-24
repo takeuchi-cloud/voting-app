@@ -2,7 +2,7 @@
 <html lang="ja">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, minimum-scale=1.0, user-scalable=no, viewport-fit=cover">
 <title>投票 - レイアウト完全固定＆全画面バランス調整版</title>
 <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@400;500;700;900&display=swap" rel="stylesheet">
 <style>
@@ -861,6 +861,30 @@ init();
   attachLP(document.querySelector('.q-head'),5000,openPanel);
   attachLP(document.querySelector('.r-head'),5000,openPanel);
   window.__buildCSV=buildCSV;window.__openPanel=openPanel;window.__clearAllData=clearAllData;
+})();
+</script>
+<script>
+/* NOZOOM-INJECTED */
+/* ピンチイン/アウト・ダブルタップ・Ctrl+ホイールによるズームを無効化（iOS Safari対応） */
+(function(){
+  ['gesturestart','gesturechange','gestureend'].forEach(function(t){
+    document.addEventListener(t, function(e){ e.preventDefault(); }, { passive:false });
+  });
+  document.addEventListener('touchmove', function(e){
+    if (e.touches && e.touches.length > 1) e.preventDefault();
+  }, { passive:false });
+  var lastTouch = 0;
+  document.addEventListener('touchend', function(e){
+    var now = Date.now();
+    if (now - lastTouch <= 300) e.preventDefault();
+    lastTouch = now;
+  }, { passive:false });
+  document.addEventListener('wheel', function(e){
+    if (e.ctrlKey) e.preventDefault();
+  }, { passive:false });
+  document.addEventListener('keydown', function(e){
+    if ((e.ctrlKey || e.metaKey) && ['+','-','=','0'].indexOf(e.key) !== -1) e.preventDefault();
+  });
 })();
 </script>
 </body>
