@@ -252,6 +252,7 @@ const LOCKER_B64 = 'data:image/jpeg;base64,/9j/4AAQSkZJRgABAQAAAQABAAD/2wBDAAcFB
 const MAX_VOTES = 10;
 const TIMEOUT_SEC = 20;
 const STORAGE_KEY = 'entaku_locker_votes_v1';
+const SEED_VOTES = [9, 12, 10, 2, 3, 1, 5, 9, 11, 29, 1, 1, 0, 0, 0, 0, 0, 0, 1, 5];  /* アンケート回答の事前集計値（起動時の初期票） */
 const QUESTION = { number: 'Q.07', title: '大浴場のロッカーどこ使う？' };
 
 // 画像（同フォルダに置く。無ければ仮ロッカー表示）
@@ -354,6 +355,10 @@ const scr = id => {
 };
 
 function loadGlobalData() {
+  /* === 事前集計シード：未投票（localStorage空）のときだけ初期票を投入 === */
+  if (localStorage.getItem(STORAGE_KEY) === null) {
+    try { localStorage.setItem(STORAGE_KEY, JSON.stringify(SEED_VOTES)); } catch(e) {}
+  }
   try {
     const saved = JSON.parse(localStorage.getItem(STORAGE_KEY));
     if (Array.isArray(saved) && saved.length === N) globalVotes = saved;
