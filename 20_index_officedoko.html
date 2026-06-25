@@ -370,6 +370,7 @@ const SE = (() => {
 const MAX_VOTES = 10;          // 同時に投票できる人数
 const TIMEOUT_SEC = 20;
 const STORAGE_KEY = 'entaku_office9_v1';
+const SEED_VOTES = [1, 25, 4, 12, 15, 4, 1, 23, 14];  /* アンケート回答の事前集計値（起動時の初期票） */
 const DAILY_KEY = 'entaku_office9_daily_v1';   // 日付別の集計（バックアップ用）
 const BACKUP_DATE_KEY = 'entaku_office9_lastbk_v1'; // 最後に自動保存した日
 const QUESTION = { number: 'Q', title: '誰もオフィスに来ないなら、どこに座る？' };
@@ -431,6 +432,10 @@ const scr = id => {
 };
 
 function loadGlobalData() {
+  /* === 事前集計シード：未投票（localStorage空）のときだけ初期票を投入 === */
+  if (localStorage.getItem(STORAGE_KEY) === null) {
+    try { localStorage.setItem(STORAGE_KEY, JSON.stringify(SEED_VOTES)); } catch(e) {}
+  }
   try {
     const saved = JSON.parse(localStorage.getItem(STORAGE_KEY));
     if (Array.isArray(saved) && saved.length === N) globalVotes = saved;
