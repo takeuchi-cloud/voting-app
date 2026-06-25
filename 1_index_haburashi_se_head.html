@@ -471,6 +471,7 @@ body {
 const MAX_VOTES = 10; 
 const TIMEOUT_SEC = 20;
 const STORAGE_KEY = 'entaku_haburashi_votes';
+const SEED_VOTES = [2, 47, 36, 11];  /* アンケート回答の事前集計値（起動時の初期票） */
 
 const QUESTION = { number: '', title: `歯磨き粉の量
 どれぐらい使う？` };
@@ -575,6 +576,10 @@ const scr = id => {
 };
 
 function loadGlobalData() {
+  /* === 事前集計シード：未投票（localStorage空）のときだけ初期票を投入 === */
+  if (localStorage.getItem(STORAGE_KEY) === null) {
+    try { localStorage.setItem(STORAGE_KEY, JSON.stringify(SEED_VOTES)); } catch(e) {}
+  }
   const saved = localStorage.getItem(STORAGE_KEY);
   if (saved) {
     globalVotes = JSON.parse(saved);
