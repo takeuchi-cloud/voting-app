@@ -487,6 +487,7 @@ const SE = (() => {
 const MAX_VOTES = 10; 
 const TIMEOUT_SEC = 20;
 const STORAGE_KEY = 'entaku_iketara_votes';
+const SEED_VOTES = [8, 31, 42, 18];  /* アンケート回答の事前集計値（起動時の初期票） */
 
 const QUESTION = { number: 'Q', title: `「行けたら行く」はどれぐらい行くつもり？` };
 
@@ -531,6 +532,10 @@ const scr = id => {
 };
 
 function loadGlobalData() {
+  /* === 事前集計シード：未投票（localStorage空）のときだけ初期票を投入 === */
+  if (localStorage.getItem(STORAGE_KEY) === null) {
+    try { localStorage.setItem(STORAGE_KEY, JSON.stringify(SEED_VOTES)); } catch(e) {}
+  }
   const saved = localStorage.getItem(STORAGE_KEY);
   if (saved) {
     try {
