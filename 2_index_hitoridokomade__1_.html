@@ -26,7 +26,7 @@ body {
   background: var(--bg);
   min-height: 100vh;
   display: flex; align-items: center; justify-content: center;
-  touch-action: manipulation;
+  touch-action: pan-x pan-y;
   -webkit-user-select: none; user-select: none;
 }
 
@@ -869,24 +869,23 @@ init();
 })();
 </script>
 <script>
-/* NOZOOM-INJECTED */
-/* ピンチイン/アウト・ダブルタップ・Ctrl+ホイールによるズームを無効化（iOS Safari対応） */
+/* NOZOOM-HARDENED: ピンチ/ダブルタップ/Ctrlズームを抑止（iOS Safari & WebView対応） */
 (function(){
-  ['gesturestart','gesturechange','gestureend'].forEach(function(t){
-    document.addEventListener(t, function(e){ e.preventDefault(); }, { passive:false });
+  function killMulti(e){ if (e.touches && e.touches.length > 1) { e.preventDefault(); } }
+  ['touchstart','touchmove'].forEach(function(t){
+    document.addEventListener(t, killMulti, { passive:false, capture:true });
   });
-  document.addEventListener('touchmove', function(e){
-    if (e.touches && e.touches.length > 1) e.preventDefault();
-  }, { passive:false });
-  var lastTouch = 0;
+  ['gesturestart','gesturechange','gestureend'].forEach(function(t){
+    document.addEventListener(t, function(e){ e.preventDefault(); }, { passive:false, capture:true });
+    window.addEventListener(t, function(e){ e.preventDefault(); }, { passive:false, capture:true });
+  });
+  var lastTouchEnd = 0;
   document.addEventListener('touchend', function(e){
     var now = Date.now();
-    if (now - lastTouch <= 300) e.preventDefault();
-    lastTouch = now;
-  }, { passive:false });
-  document.addEventListener('wheel', function(e){
-    if (e.ctrlKey) e.preventDefault();
-  }, { passive:false });
+    if (now - lastTouchEnd <= 350) { e.preventDefault(); }
+    lastTouchEnd = now;
+  }, { passive:false, capture:true });
+  document.addEventListener('wheel', function(e){ if (e.ctrlKey) e.preventDefault(); }, { passive:false });
   document.addEventListener('keydown', function(e){
     if ((e.ctrlKey || e.metaKey) && ['+','-','=','0'].indexOf(e.key) !== -1) e.preventDefault();
   });
