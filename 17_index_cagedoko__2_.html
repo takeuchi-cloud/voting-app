@@ -781,7 +781,7 @@ const SE = (() => {
     a.href=url;a.download=fn;document.body.appendChild(a);a.click();document.body.removeChild(a);
     setTimeout(function(){URL.revokeObjectURL(url);},1000);}
   function maybeAutoBackup(){var last=localStorage.getItem(BK_DATE_KEY),t=todayStr();
-    if(last&&last!==t){try{downloadCSV('backup_'+STORAGE_KEY+'_'+t+'.csv');}catch(e){}}
+    if(false){/* 自動CSV出力は無効化（展示中に画面が出ないように）。手動バックアップは管理メニューから可能 */}
     try{localStorage.setItem(BK_DATE_KEY,t);}catch(e){}}
   function showToast(msg){var t=document.getElementById('admin-toast');
     if(!t){t=document.createElement('div');t.id='admin-toast';t.className='admin-toast';document.body.appendChild(t);}
