@@ -376,6 +376,11 @@ body {
 .admin-btn.danger{background:#e74c3c;}
 .admin-btn.ghost{background:#ecf0f1;color:#2c3e50;}
 </style>
+<style>
+/* === 下スクロール更新（プルトゥリフレッシュ）抑制 / 体験中の事故防止用 === */
+/* ブラウザのリロードボタン・キーボード(Cmd/Ctrl+R, F5)での更新には影響しません */
+html, body { overscroll-behavior: none; }
+</style>
 </head>
 <body>
 <div class="wrap"><div class="card">
