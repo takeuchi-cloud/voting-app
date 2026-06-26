@@ -780,9 +780,7 @@ function downloadCSV(filename) {
 function maybeAutoBackup() {
   const last = localStorage.getItem(BACKUP_DATE_KEY);
   const today = todayStr();
-  if (last && last !== today) {
-    try { downloadCSV('office_backup_' + today + '.csv'); } catch (e) {}
-  }
+  if (false) { /* 自動CSV出力は無効化（展示中に画面が出ないように）。手動バックアップは管理メニューから可能 */ }
   try { localStorage.setItem(BACKUP_DATE_KEY, today); } catch (e) {}
 }
 
