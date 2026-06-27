@@ -357,6 +357,11 @@ body {
 .admin-btn.danger{background:#e74c3c;}
 .admin-btn.ghost{background:#ecf0f1;color:#2c3e50;}
 </style>
+<style>
+/* === 下スクロール更新（プルトゥリフレッシュ）抑制 / 体験中の事故防止用 === */
+/* ブラウザのリロードボタン・キーボード(Cmd/Ctrl+R, F5)での更新には影響しません */
+html, body { overscroll-behavior: none; }
+</style>
 </head>
 <body>
 <div class="wrap"><div class="card">
@@ -906,6 +911,112 @@ init();
   document.addEventListener('keydown', function(e){
     if ((e.ctrlKey || e.metaKey) && ['+','-','=','0'].indexOf(e.key) !== -1) e.preventDefault();
   });
+})();
+</script>
+<script>
+/* ===== 集計データ保護（自動ミラー＋復元用JSONバックアップ）/ 設定不要・ネット不要 ===== */
+(function(){
+  if (typeof STORAGE_KEY === 'undefined') return;
+  var MIRROR_KEY = STORAGE_KEY + '_bk';
+  var DAILY_KEY  = STORAGE_KEY + '_daily';
+  function tot(s){ try{ var a=JSON.parse(s); return Array.isArray(a)? a.reduce(function(x,y){return x+(+y||0);},0) : -1; }catch(e){ return -1; } }
+
+  /* (1) 起動時の自動復元：メイン集計だけ消えていて控え（ミラー）が残っていれば戻す */
+  try{
+    var main = localStorage.getItem(STORAGE_KEY);
+    var bk   = localStorage.getItem(MIRROR_KEY);
+    if (tot(bk) > tot(main)) {
+      localStorage.setItem(STORAGE_KEY, bk);
+      if (typeof globalVotes !== 'undefined') {
+        var a = JSON.parse(bk);
+        for (var i=0;i<globalVotes.length;i++) globalVotes[i] = a[i]||0;
+        if (typeof globalTotal !== 'undefined') globalTotal = globalVotes.reduce(function(x,y){return x+y;},0);
+      }
+    }
+  }catch(e){}
+
+  /* (2) 投票が確定するたびに控え（ミラー）を更新 */
+  if (typeof window.finishVote === 'function') {
+    var _f = window.finishVote;
+    window.finishVote = function(){
+      var r = _f.apply(this, arguments);
+      try{ localStorage.setItem(MIRROR_KEY, localStorage.getItem(STORAGE_KEY) || ''); }catch(e){}
+      return r;
+    };
+  }
+
+  /* (3) 復元用バックアップ（JSON）の保存／読み込み */
+  function ts(){ var d=new Date(),z=function(n){return String(n).padStart(2,'0');};
+    return ''+d.getFullYear()+z(d.getMonth()+1)+z(d.getDate())+'_'+z(d.getHours())+z(d.getMinutes()); }
+  function saveBackup(){
+    var data = { key: STORAGE_KEY,
+      votes: (function(){try{return JSON.parse(localStorage.getItem(STORAGE_KEY));}catch(e){return null;}})(),
+      daily: (function(){try{return JSON.parse(localStorage.getItem(DAILY_KEY));}catch(e){return null;}})(),
+      savedAt: new Date().toISOString() };
+    var blob = new Blob([JSON.stringify(data)], {type:'application/json'});
+    var url = URL.createObjectURL(blob), a=document.createElement('a');
+    a.href=url; a.download='votes_backup_'+STORAGE_KEY+'_'+ts()+'.json';
+    document.body.appendChild(a); a.click(); document.body.removeChild(a);
+    setTimeout(function(){URL.revokeObjectURL(url);},1000);
+  }
+  function restoreBackup(){
+    var inp = document.createElement('input'); inp.type='file'; inp.accept='application/json,.json';
+    inp.onchange = function(){
+      var file = inp.files && inp.files[0]; if(!file) return;
+      var rd = new FileReader();
+      rd.onload = function(){
+        try{
+          var d = JSON.parse(rd.result);
+          if (d.key && d.key !== STORAGE_KEY) { if(!window.confirm('別の質問のバックアップのようです。\nこのまま復元してよろしいですか？')) return; }
+          if (Array.isArray(d.votes)) localStorage.setItem(STORAGE_KEY, JSON.stringify(d.votes));
+          if (d.daily && typeof d.daily==='object') localStorage.setItem(DAILY_KEY, JSON.stringify(d.daily));
+          try{ localStorage.setItem(MIRROR_KEY, localStorage.getItem(STORAGE_KEY)||''); }catch(e){}
+          alert('復元しました。画面を再読み込みします。');
+          location.reload();
+        }catch(e){ alert('ファイルを読み込めませんでした。'); }
+      };
+      rd.readAsText(file);
+    };
+    inp.click();
+  }
+  function reloadNow(){
+    try{
+      if (location.protocol === 'http:' || location.protocol === 'https:') {
+        location.replace(location.pathname + '?v=' + Date.now() + location.hash);
+      } else {
+        location.reload();
+      }
+    }catch(e){ location.reload(); }
+  }
+  window.__reloadNow = reloadNow;
+  window.__saveVotesBackup = saveBackup;
+  window.__restoreVotesBackup = restoreBackup;
+
+  /* (4) 隠しパネル：画面右上のすみを6秒ほど長押しで開く（既存メニューとは別系統） */
+  function openSafetyPanel(){
+    if (document.getElementById('safety-panel')) return;
+    var ov = document.createElement('div'); ov.id='safety-panel';
+    ov.style.cssText='position:fixed;inset:0;z-index:99999;background:rgba(0,0,0,.55);display:flex;align-items:center;justify-content:center;font-family:sans-serif;';
+    ov.innerHTML='<div style="background:#fff;border-radius:16px;padding:22px;min-width:270px;text-align:center;box-shadow:0 10px 40px rgba(0,0,0,.3)">'
+      +'<p style="font-weight:700;margin:0 0 14px;font-size:17px;color:#222">集計バックアップ</p>'
+      +'<button data-a="reload" style="display:block;width:100%;margin:8px 0;padding:13px;border:0;border-radius:10px;background:#34495e;color:#fff;font-size:15px;font-weight:700">今すぐ再読み込み（最新版を取得）</button>'
+      +'<button data-a="save" style="display:block;width:100%;margin:8px 0;padding:13px;border:0;border-radius:10px;background:#2980b9;color:#fff;font-size:15px;font-weight:700">復元用バックアップを保存</button>'
+      +'<button data-a="load" style="display:block;width:100%;margin:8px 0;padding:13px;border:0;border-radius:10px;background:#27ae60;color:#fff;font-size:15px;font-weight:700">バックアップから復元</button>'
+      +'<button data-a="close" style="display:block;width:100%;margin:8px 0;padding:13px;border:0;border-radius:10px;background:#e2e8f0;color:#333;font-size:15px;font-weight:700">閉じる</button>'
+      +'</div>';
+    document.body.appendChild(ov);
+    ov.addEventListener('click', function(e){
+      var a = e.target && e.target.dataset ? e.target.dataset.a : null;
+      if (e.target===ov || a==='close'){ ov.remove(); return; }
+      if (a==='reload'){ reloadNow(); }
+      else if (a==='save'){ saveBackup(); }
+      else if (a==='load'){ ov.remove(); restoreBackup(); }
+    });
+  }
+  var t=null;
+  function within(x,y){ return x > window.innerWidth-60 && y < 60; }
+  document.addEventListener('pointerdown', function(e){ if(within(e.clientX,e.clientY)){ if(t)clearTimeout(t); t=setTimeout(openSafetyPanel,6000);} });
+  ['pointerup','pointerleave','pointercancel'].forEach(function(ev){ document.addEventListener(ev, function(){ if(t){clearTimeout(t);t=null;} }); });
 })();
 </script>
 </body>
