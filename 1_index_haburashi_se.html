@@ -587,7 +587,13 @@ function loadGlobalData() {
   }
   const saved = localStorage.getItem(STORAGE_KEY);
   if (saved) {
-    globalVotes = JSON.parse(saved);
+    try {
+      globalVotes = JSON.parse(saved);
+      if (!Array.isArray(globalVotes)) throw 0;
+    } catch(e) {
+      globalVotes = SEED_VOTES.slice();
+      try { localStorage.setItem(STORAGE_KEY, JSON.stringify(globalVotes)); } catch(_e){}
+    }
     globalTotal = globalVotes.reduce((sum, val) => sum + val, 0);
   } else {
     globalVotes = [0, 0, 0, 0];
@@ -1041,6 +1047,122 @@ init();
   function within(x,y){ return x > window.innerWidth-60 && y < 60; }
   document.addEventListener('pointerdown', function(e){ if(within(e.clientX,e.clientY)){ if(t)clearTimeout(t); t=setTimeout(openSafetyPanel,6000);} });
   ['pointerup','pointerleave','pointercancel'].forEach(function(ev){ document.addEventListener(ev, function(){ if(t){clearTimeout(t);t=null;} }); });
+})();
+</script>
+<script>
+/* ===== 自己回復（白画面対策）__selfHeal__ : 致命的エラー時とブランク検知で自動的に立て直す ===== */
+(function(){
+  function rc(){ try{ return +sessionStorage.getItem('__heal_n')||0; }catch(e){ return 0; } }
+  function bump(){ try{ sessionStorage.setItem('__heal_n', rc()+1); sessionStorage.setItem('__heal_t', Date.now()); }catch(e){} }
+  function recent(){ try{ return (Date.now()-(+sessionStorage.getItem('__heal_t')||0)) < 15000; }catch(e){ return false; } }
+  /* 正常稼働が60秒続いたら連続カウントをリセット（ループ打ち切りの誤発動防止） */
+  setTimeout(function(){ try{ sessionStorage.setItem('__heal_n','0'); }catch(e){} }, 60000);
+
+  function safeReload(){
+    if (recent()) return;            /* 直近15秒に立て直し済みなら待つ＝リロードループ防止 */
+    if (rc() >= 3) return;           /* 連続3回で打ち切り。壊れ続ける場合はスタッフ対応に委ねる */
+    bump();
+    setTimeout(function(){
+      try{
+        if (location.protocol==='http:'||location.protocol==='https:') location.replace(location.pathname+'?v='+Date.now());
+        else location.reload();
+      }catch(e){ location.reload(); }
+    }, 600);
+  }
+
+  /* (A) 取りこぼしたJSエラー／Promise例外で画面が壊れたら自動回復（画像やフォント等の読込失敗では発動しない） */
+  window.addEventListener('error', function(e){
+    if (e && e.target && e.target !== window && e.target.tagName) return; /* リソース読込エラーは無視 */
+    safeReload();
+  });
+  window.addEventListener('unhandledrejection', function(){ safeReload(); });
+
+  /* (B) 白画面ウォッチドッグ：表示中の画面が約9秒間どれも出ていなければ白画面とみなして立て直す */
+  if (document.querySelectorAll('.screen').length > 0) {
+    var blank = 0;
+    setInterval(function(){
+      if (document.getElementById('safety-panel')) { blank = 0; return; } /* パネル表示中は判定しない */
+      var s = document.querySelector('.screen.show');
+      var ok = s && s.getBoundingClientRect && s.getBoundingClientRect().height > 0;
+      if (ok) { blank = 0; return; }
+      blank++;
+      if (blank >= 3) { blank = 0; safeReload(); }   /* 3秒 x 3回 ≒ 9秒 */
+    }, 3000);
+  }
+})();
+</script>
+<script>
+/* ===== 定時自動更新 __autoUpdate__ : 毎日 21:30 と 9:00 に最新版へ自動リロード（取りこぼし補完つき） ===== */
+(function(){
+  var TIMES = [[21,30],[9,0]];      /* 更新する時刻（24h・端末の時計＝日本時間想定） */
+  var LASTKEY = '__au_last';        /* 最後に実行した更新スロットの識別子 */
+  var IDLE_MS = 8000;               /* 待機画面でこの時間操作が無ければ静かに更新 */
+  var CHECK_MS = 30000;             /* 時刻チェックの間隔（30秒ごと） */
+
+  /* ある日時が属する「直近の更新スロット」識別子（例 "20260628-2130"）を返す */
+  function slotIdAt(d){
+    var best=null;
+    for (var i=0;i<TIMES.length;i++){
+      var t=new Date(d); t.setHours(TIMES[i][0],TIMES[i][1],0,0);
+      if (t.getTime() <= d.getTime()){
+        if (!best || t.getTime()>best.t) best={t:t.getTime(),h:TIMES[i][0],m:TIMES[i][1],day:t};
+      }
+    }
+    if (!best){ /* まだ今日のどの時刻にも達していない→前日の最後のスロット */
+      var y=new Date(d); y.setDate(y.getDate()-1);
+      var last=TIMES.slice().sort(function(a,b){return (b[0]*60+b[1])-(a[0]*60+a[1]);})[0];
+      y.setHours(last[0],last[1],0,0); best={day:y,h:last[0],m:last[1]};
+    }
+    var z=function(n){return String(n).padStart(2,'0');};
+    var dd=best.day;
+    return ''+dd.getFullYear()+z(dd.getMonth()+1)+z(dd.getDate())+'-'+z(best.h)+z(best.m);
+  }
+  function getLast(){ try{ return localStorage.getItem(LASTKEY); }catch(e){ return null; } }
+  function setLast(v){ try{ localStorage.setItem(LASTKEY, v); }catch(e){} }
+
+  function doReload(){
+    try{
+      if (location.protocol==='http:'||location.protocol==='https:') location.replace(location.pathname+'?v='+Date.now());
+      else location.reload();
+    }catch(e){ location.reload(); }
+  }
+
+  /* 体験を邪魔しないタイミングを待ってから更新（投票中・結果表示中は待つ） */
+  var lastTouch = Date.now();
+  document.addEventListener('pointerdown', function(){ lastTouch = Date.now(); }, true);
+  function idleScreenReady(){
+    /* 待機（最初の）画面が表示中 かつ 一定時間タップが無い ことを条件にする */
+    var s = document.querySelector('.screen.show');
+    var screens = document.querySelectorAll('.screen');
+    var onIdle = (screens.length>0 && s) ? (s === screens[0]) : true; /* 構成不明な場合はタップ間隔のみで判定 */
+    return onIdle && (Date.now() - lastTouch > IDLE_MS) && !document.getElementById('safety-panel');
+  }
+
+  var pending = false;
+  function requestUpdate(slot){
+    if (pending) return;
+    pending = true;
+    (function waitIdle(){
+      if (idleScreenReady()){ setLast(slot); doReload(); }
+      else { setTimeout(waitIdle, 2000); }   /* 落ち着くまで待ってから実行 */
+    })();
+  }
+
+  function tick(){
+    try{
+      var slot = slotIdAt(new Date());
+      if (getLast() !== slot) requestUpdate(slot);   /* このスロットをまだ実行していなければ更新 */
+    }catch(e){}
+  }
+
+  /* 初回は基準スロットを記録（起動直後にいきなり更新しないため）。
+     ただし「最後の更新以降に予定時刻をまたいでいる」場合だけ取りこぼしとして1回更新する。 */
+  if (getLast() === null) { setLast(slotIdAt(new Date())); }
+  else { tick(); }                 /* 起動・復帰時の取りこぼし補完 */
+
+  setInterval(tick, CHECK_MS);                 /* 定時チェック */
+  document.addEventListener('visibilitychange', function(){ if (!document.hidden) tick(); }); /* スリープ復帰時 */
+  window.addEventListener('focus', tick);
 })();
 </script>
 </body>
